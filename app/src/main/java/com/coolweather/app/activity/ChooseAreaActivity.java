@@ -2,7 +2,10 @@ package com.coolweather.app.activity;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.Window;
@@ -68,6 +71,13 @@ public class ChooseAreaActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        if(prefs.getBoolean("city_selected",false)){
+            Intent intent = new Intent(this,WeatherActivity.class);
+            startActivity(intent);
+            finish();
+            return;
+        }
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.choose_area);
         listView = (ListView) findViewById(R.id.list_view);
@@ -84,6 +94,12 @@ public class ChooseAreaActivity extends Activity {
                 }else if (currentLevel == LEVEL_CITY){
                     selectedCity = cityList.get(position);
                     queryCounties();
+                }else if (currentLevel == LEVEL_COUNTY){
+                    String countyCode = countyList.get(position).getCountyCode();
+                    Intent intent = new Intent(ChooseAreaActivity.this,WeatherActivity.class);
+                    intent.putExtra("county_code",countyCode);
+                    startActivity(intent);
+                    finish();
                 }
             }
         });
@@ -153,55 +169,60 @@ public class ChooseAreaActivity extends Activity {
      * 根据传入的代号和类型从服务器上查询省市县数据
      */
     private void queryFromServer(final String code, final String type){
-        String address;
-        if(!TextUtils.isEmpty(code)){
-            address = "http://www.weather.com.cn/data/list3/city" + code + ".xml";
 
-        }else {
-            address = "http://www.weather.com.cn/data/list3/city.xml";
-        }
-        showProgressDialog();
-        HttpUtil.sendHttpRequest(address, new HttpCallbackListener() {
-            @Override
-            public void onFinish(String response) {
-                boolean result = false;
-                if("province".equals(type)){
-                    result = Utility.handleProvincesResponse(coolWeatherDB,response);
-                }else if ("city".equals(type)){
-                    result = Utility.handlecitiesResponse(coolWeatherDB,response,selectedProvince.getId());
-                }else if ("county".equals(type)){
-                    result = Utility.handleCountiesResponse(coolWeatherDB,response,selectedCity.getId());
-                }
-                if (result){
-                    //通过runOnUiThread()方法回到主线程处理逻辑
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            closeProgressDialog();
-                            if("province".equals(type)){
-                                queryProvinces();
-                            }else if ("city".equals(type)){
-                                queryCities();
-                            }else if ("county".equals(type)){
-                                queryCounties();
-                            }
-                        }
-                    });
-                }
-            }
 
-            @Override
-            public void onError(Exception e) {
-                //通过runOnUiThread()方法回到主线程处理逻辑
-                runOnUiThread(new Runnable() {
+                String address;
+                if(!TextUtils.isEmpty(code)){
+                    address = "http://www.weather.com.cn/data/list3/city" + code + ".xml";
+
+                }else {
+                    address = "http://www.weather.com.cn/data/list3/city.xml";
+                }
+                showProgressDialog();
+                HttpUtil.sendHttpRequest(address, new HttpCallbackListener() {
                     @Override
-                    public void run() {
-                        closeProgressDialog();
-                        Toast.makeText(ChooseAreaActivity.this,"加载失败",Toast.LENGTH_SHORT).show();
+                    public void onFinish(String response) {
+                        boolean result = false;
+                        if("province".equals(type)){
+                            result = Utility.handleProvincesResponse(coolWeatherDB,response);
+                        }else if ("city".equals(type)){
+                            result = Utility.handlecitiesResponse(coolWeatherDB,response,selectedProvince.getId());
+                        }else if ("county".equals(type)){
+                            result = Utility.handleCountiesResponse(coolWeatherDB,response,selectedCity.getId());
+                        }
+                        if (result){
+                            //通过runOnUiThread()方法回到主线程处理逻辑
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    closeProgressDialog();
+                                    if("province".equals(type)){
+                                        queryProvinces();
+                                    }else if ("city".equals(type)){
+                                        queryCities();
+                                    }else if ("county".equals(type)){
+                                        queryCounties();
+                                    }
+                                }
+                            });
+
+                        }
                     }
-                });
-            }
+
+                    @Override
+                    public void onError(Exception e) {
+                        //通过runOnUiThread()方法回到主线程处理逻辑
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                closeProgressDialog();
+                                Toast.makeText(ChooseAreaActivity.this,"加载失败",Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+
         });
+
     }
 
 
